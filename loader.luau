@@ -3,7 +3,9 @@ getgenv().Repo = getgenv().Repo or { Base = "https://raw.githubusercontent.com/s
 local Base: string = getgenv().Repo.Base
 
 local ok, err = pcall(function()
-	getgenv().Menu = loadstring(game:HttpGet(Base .. "/ui-lib.luau"))()
+	local fn, synErr = loadstring(game:HttpGet(Base .. "/ui-lib.luau"))
+	assert(fn, "[loader] compile: " .. tostring(synErr)) -- ponytail: surfaces real syntax error
+	getgenv().Menu = fn()
 end)
 if not ok then warn("[loader] lib: " .. tostring(err)) return end
 

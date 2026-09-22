@@ -239,9 +239,12 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		for i, p in pages do
 			local on = i == idx
 			p.Visible = on
-			(tabs[i]:FindFirstChildOfClass("Frame") :: Frame).Visible = on
-			(navs[i]:FindFirstChildOfClass("Frame") :: Frame).Visible = on;
-			(navs[i]:FindFirstChildOfClass("TextLabel") :: TextLabel).TextColor3 = if on then WHITE else GREY
+			local tf = tabs[i]:FindFirstChildOfClass("Frame")
+			if tf then (tf :: Frame).Visible = on end
+			local nf = navs[i]:FindFirstChildOfClass("Frame")
+			if nf then (nf :: Frame).Visible = on end
+			local nl = navs[i]:FindFirstChildOfClass("TextLabel")
+			if nl then (nl :: TextLabel).TextColor3 = if on then WHITE else GREY end
 		end
 	end
 	function self:Tab(name: string)
@@ -284,7 +287,8 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		edge.Parent = nb
 		table.insert(navs, nb)
 		if #pages == 1 then
-			(navs[1]:FindFirstChildOfClass("TextLabel") :: TextLabel).TextColor3 = WHITE
+			local first = navs[1]:FindFirstChildOfClass("TextLabel")
+			if first then (first :: TextLabel).TextColor3 = WHITE end
 		end
 		local idx = #pages
 		tb.MouseButton1Click:Connect(function() select(idx) end)
