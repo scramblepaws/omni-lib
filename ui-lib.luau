@@ -39,8 +39,29 @@ local function box(p: Instance): (Frame, (boolean) -> ())
 	return b, function(on: boolean) b.BackgroundColor3 = if on then ACC else ROWC end
 end
 
-local function controls(host: Instance): any
+local function controls(host: Instance, ctx: any): any
 	local ctl: any = {}
+	local function closePop()
+		if ctx.pop then
+			ctx.pop:Destroy()
+			ctx.pop = nil
+		end
+	end
+	local function popFrame(w: number, h: number, rowBtn: TextButton): Frame
+		closePop()
+		local pop = Instance.new("Frame")
+		pop.Size = UDim2.fromOffset(w, h)
+		local fp, rp = ctx.frame.AbsolutePosition, rowBtn.AbsolutePosition
+		local s = ctx.zoom.Scale
+		pop.Position = UDim2.fromOffset((rp.X - fp.X) / s, (rp.Y - fp.Y) / s + ROW)
+		pop.BackgroundColor3, pop.BorderSizePixel = SECT, 0
+		pop.Parent = ctx.frame
+		local st = Instance.new("UIStroke")
+		st.Thickness, st.Color = 1, Color3.fromRGB(120, 120, 120)
+		st.Parent = pop
+		ctx.pop = pop
+		return pop
+	end
 	local function row(): TextButton
 		local b = Instance.new("TextButton")
 		b.Size = UDim2.new(1, 0, 0, ROW)
@@ -74,11 +95,82 @@ local function controls(host: Instance): any
 	end
 	function ctl:AddToggle(t: string, default: boolean, cb: (boolean) -> ())
 		local on = default
+		local bound: Enum.KeyCode? = nil
+		local mode, wait = "toggle", false
 		local b = row()
 		label(b, t)
+		local bl = Instance.new("TextLabel") -- ponytail: bind tag, delete block if binds unwanted
+		bl.Size = UDim2.new(0, 52, 1, 0)
+		bl.AnchorPoint = Vector2.new(1, 0)
+		bl.Position = UDim2.new(1, -26, 0, 0)
+		bl.BackgroundTransparency = 1
+		bl.Font, bl.TextSize = FONT, TS
+		bl.TextColor3, bl.TextXAlignment = GREY, Enum.TextXAlignment.Right
+		bl.Text = ""
+		bl.Parent = b
 		local _, paint = box(b)
-		paint(on)
-		b.MouseButton1Click:Connect(function() on = not on; paint(on); pcall(cb, on) end)
+		local function show()
+			paint(on)
+			if wait then
+				bl.Text = "[...]"
+			elseif bound then
+				bl.Text = if mode == "hold" then "[" .. bound.Name .. "+]" else "[" .. bound.Name .. "]"
+			else
+				bl.Text = ""
+			end
+		end
+		show()
+		b.MouseButton1Click:Connect(function()
+			if wait then return end
+			on = not on
+			show()
+			pcall(cb, on)
+		end)
+		b.MouseButton2Click:Connect(function()
+			if wait then
+				wait = false
+				bound = nil
+				mode = "toggle"
+			elseif not bound then
+				wait = true
+			elseif mode == "toggle" then
+				mode = "hold"
+			else
+				bound = nil
+				mode = "toggle"
+			end
+			show()
+		end)
+		UIS.InputBegan:Connect(function(i: InputObject, gpe: boolean)
+			if gpe or i.KeyCode == Enum.KeyCode.Unknown then return end
+			if wait then
+				if i.KeyCode == Enum.KeyCode.Escape then
+					bound = nil
+				else
+					bound = i.KeyCode
+				end
+				mode = "toggle"
+				wait = false
+				show()
+				return
+			end
+			if bound and i.KeyCode == bound then
+				if mode == "hold" then
+					on = true
+				else
+					on = not on
+				end
+				show()
+				pcall(cb, on)
+			end
+		end)
+		UIS.InputEnded:Connect(function(i: InputObject)
+			if bound and mode == "hold" and i.KeyCode == bound and on then
+				on = false
+				show()
+				pcall(cb, on)
+			end
+		end)
 		pcall(cb, on)
 		return b
 	end
@@ -142,6 +234,167 @@ local function controls(host: Instance): any
 		pcall(cb, key)
 		return b
 	end
+	function ctl:AddDropdown(t: string, options: { string }, defaults: { boolean }?, cb: ({ boolean }) -> ())
+		local sel: { boolean } = {}
+		for i in options do sel[i] = if defaults then defaults[i] == true else false end
+		local b = row()
+		local lab = label(b, t)
+		local function preview()
+			local names: { string } = {}
+			for i, on in sel do
+				if on then table.insert(names, options[i]) end
+			end
+			local s = table.concat(names, ", ")
+			if s == "" then s = "none" end
+			lab.Text = t .. " [" .. s .. "]"
+		end
+		preview()
+		b.MouseButton1Click:Connect(function()
+			if ctx.pop and ctx.pop:GetAttribute("owner") == b then
+				closePop()
+				return
+			end
+			local pop = popFrame(200, math.min(#options, 6) * ROW + 8, b)
+			pop:SetAttribute("owner", b)
+			local inner = Instance.new("ScrollingFrame")
+			inner.Size = UDim2.new(1, -8, 1, -8)
+			inner.Position = UDim2.fromOffset(4, 4)
+			inner.BackgroundTransparency = 1
+			inner.ScrollBarThickness = 2
+			inner.AutomaticCanvasSize = Enum.AutomaticSize.Y
+			inner.CanvasSize = UDim2.new(0, 0, 0, 0)
+			inner.ScrollingDirection = Enum.ScrollingDirection.Y
+			inner.Parent = pop
+			list(inner, false)
+			for i, name in options do
+				local ob = Instance.new("TextButton")
+				ob.Size = UDim2.new(1, 0, 0, ROW)
+				ob.BackgroundColor3, ob.Font, ob.TextSize = ROWC, FONT, TS
+				ob.TextColor3, ob.TextXAlignment, ob.AutoButtonColor = WHITE, Enum.TextXAlignment.Left, false
+				ob.Text = "  " .. name
+				ob.Parent = inner
+				local _, paint = box(ob)
+				paint(sel[i])
+				ob.MouseButton1Click:Connect(function()
+					sel[i] = not sel[i]
+					paint(sel[i])
+					preview()
+					pcall(cb, sel)
+				end)
+			end
+		end)
+		pcall(cb, sel)
+		return b
+	end
+	function ctl:AddColor(t: string, default: Color3, cb: (Color3) -> ())
+		local h, s, v = default:ToHSV()
+		local b = row()
+		label(b, t)
+		local sw = Instance.new("Frame")
+		sw.Size = UDim2.fromOffset(14, 14)
+		sw.AnchorPoint = Vector2.new(1, 0.5)
+		sw.Position = UDim2.new(1, -6, 0.5, 0)
+		sw.BackgroundColor3, sw.BorderSizePixel = default, 0
+		sw.Parent = b
+		local function cur(): Color3 return Color3.fromHSV(h, s, v) end
+		b.MouseButton1Click:Connect(function()
+			if ctx.pop and ctx.pop:GetAttribute("owner") == b then
+				closePop()
+				return
+			end
+			local pop = popFrame(176, 200, b)
+			pop:SetAttribute("owner", b)
+			local sv = Instance.new("TextButton")
+			sv.Size = UDim2.new(1, -16, 0, 160)
+			sv.Position = UDim2.fromOffset(8, 8)
+			sv.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+			sv.AutoButtonColor, sv.Text = false, ""
+			sv.Parent = pop
+			local satL = Instance.new("Frame")
+			satL.Size = UDim2.new(1, 0, 1, 0)
+			satL.BackgroundColor3, satL.BorderSizePixel = WHITE, 0
+			satL.Parent = sv
+			local satG = Instance.new("UIGradient")
+			satG.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+			satG.Parent = satL
+			local valL = Instance.new("Frame")
+			valL.Size = UDim2.new(1, 0, 1, 0)
+			valL.BackgroundColor3, valL.BorderSizePixel = BLACK, 0
+			valL.Parent = sv
+			local valG = Instance.new("UIGradient")
+			valG.Rotation = 90
+			valG.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) })
+			valG.Parent = valL
+			local cur2 = Instance.new("Frame")
+			cur2.Size = UDim2.fromOffset(6, 6)
+			cur2.AnchorPoint = Vector2.new(0.5, 0.5)
+			cur2.BackgroundTransparency = 1
+			cur2.Parent = sv
+			local cs = Instance.new("UIStroke")
+			cs.Thickness, cs.Color = 1, WHITE
+			cs.Parent = cur2
+			local hue = Instance.new("TextButton")
+			hue.Size = UDim2.new(1, -16, 0, 16)
+			hue.Position = UDim2.fromOffset(8, 176)
+			hue.AutoButtonColor, hue.Text = false, ""
+			hue.Parent = pop
+			local hueG = Instance.new("UIGradient")
+			hueG.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+				ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
+				ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+				ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
+				ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+			})
+			hueG.Parent = hue
+			local hueC = Instance.new("Frame")
+			hueC.Size = UDim2.new(0, 4, 1, 0)
+			hueC.BackgroundColor3, hueC.BorderSizePixel = WHITE, 0
+			hueC.Parent = hue
+			local function paint()
+				sv.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+				cur2.Position = UDim2.new(s, 0, 1 - v, 0)
+				hueC.Position = UDim2.new(h, 0, 0, 0)
+				sw.BackgroundColor3 = cur()
+			end
+			paint()
+			local drag: TextButton? = nil
+			local function setFrom(i: InputObject)
+				if drag == sv then
+					s = math.clamp((i.Position.X - sv.AbsolutePosition.X) / sv.AbsoluteSize.X, 0, 1)
+					v = 1 - math.clamp((i.Position.Y - sv.AbsolutePosition.Y) / sv.AbsoluteSize.Y, 0, 1)
+				elseif drag == hue then
+					h = math.clamp((i.Position.X - hue.AbsolutePosition.X) / hue.AbsoluteSize.X, 0, 0.999)
+				else
+					return
+				end
+				paint()
+				pcall(cb, cur())
+			end
+			sv.InputBegan:Connect(function(i: InputObject)
+				if i.UserInputType == Enum.UserInputType.MouseButton1 then
+					drag = sv
+					setFrom(i)
+				end
+			end)
+			hue.InputBegan:Connect(function(i: InputObject)
+				if i.UserInputType == Enum.UserInputType.MouseButton1 then
+					drag = hue
+					setFrom(i)
+				end
+			end)
+			UIS.InputEnded:Connect(function(i: InputObject)
+				if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = nil end
+			end)
+			UIS.InputChanged:Connect(function(i: InputObject)
+				if drag and i.UserInputType == Enum.UserInputType.MouseMovement then setFrom(i) end
+			end)
+		end)
+		pcall(cb, cur())
+		return b
+	end
 	return ctl
 end
 
@@ -161,6 +414,24 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	frame.BackgroundColor3 = BODY
 	frame.Active, frame.Draggable = true, true
 	frame.Parent = gui
+	local zoom = Instance.new("UIScale") -- ponytail: uniform scale, layout-proof
+	zoom.Parent = frame
+	local function fit()
+		local h = 900
+		local cam = workspace.CurrentCamera
+		if cam then h = cam.ViewportSize.Y end
+		zoom.Scale = math.clamp(h / 900, 0.8, 1.2)
+	end
+	fit()
+	local function track(cam: Camera?)
+		if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
+	end
+	track(workspace.CurrentCamera)
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		track(workspace.CurrentCamera)
+		fit()
+	end)
+	local ctx: any = { frame = frame, zoom = zoom }
 	local outer = Instance.new("UIStroke") -- ponytail: 2 strokes = inner+outer, merge if engine drops one
 	outer.Thickness, outer.Color = 2, WHITE
 	outer.Parent = frame
@@ -236,6 +507,10 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	local tabs: { TextButton } = {}
 	local navs: { TextButton } = {}
 	local function select(idx: number)
+		if ctx.pop then
+			ctx.pop:Destroy()
+			ctx.pop = nil
+		end
 		for i, p in pages do
 			local on = i == idx
 			p.Visible = on
@@ -255,6 +530,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		pg.ScrollBarThickness = 3
 		pg.AutomaticCanvasSize = Enum.AutomaticSize.Y
 		pg.CanvasSize = UDim2.new(0, 0, 0, 0)
+		pg.ScrollingDirection = Enum.ScrollingDirection.Y -- ponytail: kills horizontal bar from col math
 		pg.Visible = #pages == 0
 		pg.Parent = body
 		local qp = Instance.new("UIPadding")
@@ -271,7 +547,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		list(cols, true)
 		local function column(scale: number): Frame
 			local c = Instance.new("Frame")
-			c.Size = UDim2.new(scale, -2, 0, 0)
+			c.Size = UDim2.new(scale, -4, 0, 0) -- ponytail: -4 slack so rounding never clips right col
 			c.AutomaticSize = Enum.AutomaticSize.Y
 			c.BackgroundTransparency = 1
 			c.Parent = cols
@@ -311,7 +587,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		tb.MouseButton1Click:Connect(function() select(idx) end)
 		nb.MouseButton1Click:Connect(function() select(idx) end)
 
-		local ctl: any = controls(left)
+		local ctl: any = controls(left, ctx)
 		function ctl:Section(t: string, default: boolean, cb: (boolean) -> (), col: string?)
 			local host = if col == "right" then right else left
 			local on = default
@@ -344,7 +620,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 			local qp3 = Instance.new("UIPadding")
 			qp3.PaddingLeft, qp3.PaddingRight = UDim.new(0, 4), UDim.new(0, 4)
 			qp3.Parent = innerHost
-			return controls(innerHost)
+			return controls(innerHost, ctx)
 		end
 		return ctl
 	end
