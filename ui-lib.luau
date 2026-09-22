@@ -501,6 +501,13 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		if gpe then return end
 		if i.KeyCode == toggleKey then gui.Enabled = not gui.Enabled end
 	end)
+	UIS.InputBegan:Connect(function(i: InputObject, gpe: boolean)
+		if gpe then return end
+		if i.KeyCode == Enum.KeyCode.P then -- ponytail: kill switch; loops exit via gui.Parent, conns go dead
+			gui:Destroy()
+			getgenv().Menu = nil
+		end
+	end)
 
 	local self: any = {}
 	local pages: { ScrollingFrame } = {}

@@ -22,4 +22,4 @@ set:AddColor("Accent", Color3.fromRGB(150, 135, 255), function(c: Color3) print(
 local misc: any = win:Tab("Misc")
 local gen2: any = misc:Section("General", true, function() end)
 gen2:AddButton("Ping", function() print("pong") end)
-print("[demo] two-panel ok")
+print("[demo] two-panel ok (P kills menu)")
