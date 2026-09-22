@@ -484,6 +484,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		track(workspace.CurrentCamera)
 		fit()
 	end)
+	local binds: { {name: string, key: string?, mode: string} } = {}
 	local ctx: any = { frame = frame, zoom = zoom, binds = binds, refresh = nil }
 	local kb: any = nil
 	ctx.refresh = function()
@@ -619,7 +620,6 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	local self: any = {}
 	local pages: { ScrollingFrame } = {}
 	local navs: { TextButton } = {}
-	local binds: { {name: string, key: string?, mode: string} } = {}
 	local function select(idx: number)
 		if ctx.close then ctx.close() end
 		for i, p in pages do
