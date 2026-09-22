@@ -517,14 +517,8 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	content.Position = UDim2.fromOffset(140, 0)
 	content.BackgroundTransparency = 1
 	content.Parent = frame
-	local bar = Instance.new("Frame")
-	bar.Size = UDim2.new(1, 0, 0, 26)
-	bar.BackgroundTransparency = 1
-	bar.Parent = content
-	list(bar, true)
 	local body = Instance.new("Frame")
-	body.Size = UDim2.new(1, 0, 1, -26)
-	body.Position = UDim2.fromOffset(0, 26)
+	body.Size = UDim2.new(1, 0, 1, 0)
 	body.BackgroundTransparency = 1
 	body.Parent = content
 
@@ -542,15 +536,12 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 
 	local self: any = {}
 	local pages: { ScrollingFrame } = {}
-	local tabs: { TextButton } = {}
 	local navs: { TextButton } = {}
 	local function select(idx: number)
 		if ctx.close then ctx.close() end
 		for i, p in pages do
 			local on = i == idx
 			p.Visible = on
-			local tf: any = tabs[i]:FindFirstChildOfClass("Frame")
-			if tf then tf.Visible = on end
 			local nf: any = navs[i]:FindFirstChildOfClass("Frame")
 			if nf then nf.Visible = on end
 			navs[i].TextColor3 = if on then WHITE else GREY
@@ -590,18 +581,6 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		end
 		local left, right = column(0.6), column(0.4)
 
-		local tb = Instance.new("TextButton")
-		tb.Size = UDim2.new(0, 96, 1, 0)
-		tb.BackgroundTransparency = 1
-		tb.Font, tb.TextSize, tb.TextColor3, tb.Text = FONT, TS, WHITE, name
-		tb.Parent = bar
-		local ul = Instance.new("Frame")
-		ul.Size = UDim2.new(1, 0, 0, 2)
-		ul.Position = UDim2.new(0, 0, 1, -2)
-		ul.BackgroundColor3, ul.BorderSizePixel, ul.Visible = ACC, 0, #pages == 1
-		ul.Parent = tb
-		table.insert(tabs, tb)
-
 		local nb = Instance.new("TextButton")
 		nb.Size = UDim2.new(1, 0, 0, ROW)
 		nb.BackgroundTransparency = 1
@@ -615,7 +594,6 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		table.insert(navs, nb)
 		if #pages == 1 then navs[1].TextColor3 = WHITE end
 		local idx = #pages
-		tb.MouseButton1Click:Connect(function() select(idx) end)
 		nb.MouseButton1Click:Connect(function() select(idx) end)
 
 		local ctl: any = controls(left, ctx)
