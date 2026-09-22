@@ -7,9 +7,15 @@ local gethuiFn = (gethui or function() return game:GetService("Players").LocalPl
 local UIS = safe(game:GetService("UserInputService"))
 
 local FONT, TS, ROW = Enum.Font.Code, 13, 24
-local ACC = Color3.fromRGB(150, 135, 255) -- ponytail: single accent, swap one line to retheme
-local BODY, SIDEBG, SECT, ROWC = Color3.fromRGB(20, 20, 20), Color3.fromRGB(14, 14, 14), Color3.fromRGB(26, 26, 26), Color3.fromRGB(38, 38, 38)
-local WHITE, GREY = Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)
+local ACC = Color3.fromRGB(178, 156, 255) -- ponytail: Akiri purple accent
+local OUTLINE = Color3.new(0, 0, 0)
+local BLACK = Color3.new(0, 0, 0)
+local BODY = Color3.fromRGB(25, 20, 45)
+local SIDEBG = Color3.fromRGB(20, 16, 36)
+local SECT = Color3.fromRGB(40, 34, 64)
+local ROWC = Color3.fromRGB(46, 42, 76)
+local TEXTPC = Color3.fromRGB(200, 190, 255)
+local TEXTDIM = Color3.fromRGB(140, 135, 180)
 
 local function pad(p: Instance, x: number)
 	local u = Instance.new("UIPadding")
@@ -84,19 +90,19 @@ local function controls(host: Instance, ctx: any): any
 			local b = Instance.new("TextButton")
 			b.Size = UDim2.new(1, 0, 0, ROW)
 			b.BackgroundColor3, b.Font, b.TextSize = ROWC, FONT, TS
-			b.TextColor3, b.TextXAlignment, b.AutoButtonColor = WHITE, Enum.TextXAlignment.Left, false
-			b.Text = ""
-			b.Parent = host
-			pad(b, 6)
-			b.MouseEnter:Connect(function() b.BackgroundColor3 = Color3.fromRGB(48, 48, 48) end)
-			b.MouseLeave:Connect(function() b.BackgroundColor3 = ROWC end)
+		b.TextColor3, b.TextXAlignment, b.AutoButtonColor = TEXTPC, Enum.TextXAlignment.Left, false
+		b.Text = ""
+		b.Parent = host
+		pad(b, 6)
+		b.MouseEnter:Connect(function() b.BackgroundColor3 = Color3.fromRGB(56, 52, 88) end)
+		b.MouseLeave:Connect(function() b.BackgroundColor3 = ROWC end)
 			return b
 		end
 	local function label(b: TextButton, t: string)
 		local l = Instance.new("TextLabel")
 		l.Size = UDim2.new(1, -28, 1, 0)
 		l.BackgroundTransparency = 1
-		l.Font, l.TextSize, l.TextColor3 = FONT, TS, WHITE
+		l.Font, l.TextSize, l.TextColor3 = FONT, TS, TEXTPC
 		l.TextXAlignment = Enum.TextXAlignment.Left
 		l.TextTruncate = Enum.TextTruncate.AtEnd
 		l.Text = t
@@ -119,16 +125,18 @@ local function controls(host: Instance, ctx: any): any
 		local mode, wait = "toggle", false
 		local b = row()
 		local tl = label(b, t)
-		tl.Size = UDim2.new(1, -84, 1, 0) -- ponytail: clears the bind tag zone
-		local bl = Instance.new("TextLabel") -- ponytail: bind tag, delete block if binds unwanted
+		tl.Size = UDim2.new(1, -84, 1, 0)
+		local bl = Instance.new("TextLabel")
 		bl.Size = UDim2.new(0, 52, 1, 0)
 		bl.AnchorPoint = Vector2.new(1, 0)
 		bl.Position = UDim2.new(1, -26, 0, 0)
 		bl.BackgroundTransparency = 1
 		bl.Font, bl.TextSize = FONT, TS
-		bl.TextColor3, bl.TextXAlignment = GREY, Enum.TextXAlignment.Right
+		bl.TextColor3, bl.TextXAlignment = TEXTDIM, Enum.TextXAlignment.Right
 		bl.Text = ""
 		bl.Parent = b
+		local entry = {name = t, key = "", mode = "toggle"}
+		table.insert(binds, entry)
 		local _, paint = box(b)
 		local function show()
 			paint(on)
@@ -144,7 +152,9 @@ local function controls(host: Instance, ctx: any): any
 		b.MouseButton1Click:Connect(function()
 			if wait then return end
 			on = not on
-			show()
+			entry.key = bound and bound.Name or ""
+			entry.mode = mode
+			if ctx.refresh then ctx.refresh() end
 			pcall(cb, on)
 		end)
 		b.MouseButton2Click:Connect(function()
@@ -160,6 +170,9 @@ local function controls(host: Instance, ctx: any): any
 				bound = nil
 				mode = "toggle"
 			end
+			entry.key = bound and bound.Name or ""
+			entry.mode = mode
+			if ctx.refresh then ctx.refresh() end
 			show()
 		end)
 		UIS.InputBegan:Connect(function(i: InputObject, gpe: boolean)
@@ -172,6 +185,9 @@ local function controls(host: Instance, ctx: any): any
 				end
 				mode = "toggle"
 				wait = false
+				entry.key = bound and bound.Name or ""
+				entry.mode = mode
+				if ctx.refresh then ctx.refresh() end
 				show()
 				return
 			end
@@ -181,6 +197,9 @@ local function controls(host: Instance, ctx: any): any
 				else
 					on = not on
 				end
+				entry.key = bound and bound.Name or ""
+				entry.mode = mode
+				if ctx.refresh then ctx.refresh() end
 				show()
 				pcall(cb, on)
 			end
@@ -188,6 +207,9 @@ local function controls(host: Instance, ctx: any): any
 		UIS.InputEnded:Connect(function(i: InputObject)
 			if bound and mode == "hold" and i.KeyCode == bound and on then
 				on = false
+				entry.key = bound and bound.Name or ""
+				entry.mode = mode
+				if ctx.refresh then ctx.refresh() end
 				show()
 				pcall(cb, on)
 			end
@@ -204,7 +226,7 @@ local function controls(host: Instance, ctx: any): any
 		local lab = Instance.new("TextLabel")
 		lab.Size = UDim2.new(1, -6, 1, 0)
 		lab.BackgroundTransparency = 1
-		lab.Font, lab.TextSize, lab.TextColor3 = FONT, TS, WHITE
+			lab.Font, lab.TextSize, lab.TextColor3 = FONT, TS, TEXTPC
 		lab.TextXAlignment = Enum.TextXAlignment.Left
 			lab.TextTruncate = Enum.TextTruncate.AtEnd
 			lab.Parent = b
@@ -248,7 +270,7 @@ local function controls(host: Instance, ctx: any): any
 		right.Position = UDim2.new(1, -6, 0, 0)
 		right.BackgroundTransparency = 1
 		right.Font, right.TextSize = FONT, TS
-		right.TextColor3, right.TextXAlignment = GREY, Enum.TextXAlignment.Right
+		right.TextColor3, right.TextXAlignment = TEXTDIM, Enum.TextXAlignment.Right
 		right.Parent = b
 		local function paint()
 			left.Text, right.Text = t, if wait then "[...]" else `[{key.Name}]`
@@ -301,7 +323,7 @@ local function controls(host: Instance, ctx: any): any
 				local ob = Instance.new("TextButton")
 				ob.Size = UDim2.new(1, 0, 0, ROW)
 				ob.BackgroundColor3, ob.Font, ob.TextSize = ROWC, FONT, TS
-				ob.TextColor3, ob.TextXAlignment, ob.AutoButtonColor = WHITE, Enum.TextXAlignment.Left, false
+				ob.TextColor3, ob.TextXAlignment, ob.AutoButtonColor = TEXTPC, Enum.TextXAlignment.Left, false
 				ob.Text = "  " .. name
 				ob.Parent = inner
 				local _, paint = box(ob)
@@ -343,7 +365,7 @@ local function controls(host: Instance, ctx: any): any
 			sv.Parent = pop
 			local satL = Instance.new("Frame")
 			satL.Size = UDim2.new(1, 0, 1, 0)
-			satL.BackgroundColor3, satL.BorderSizePixel = WHITE, 0
+			satL.BackgroundColor3, satL.BorderSizePixel = TEXTPC, 0
 			satL.Parent = sv
 			local satG = Instance.new("UIGradient")
 			satG.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
@@ -362,7 +384,7 @@ local function controls(host: Instance, ctx: any): any
 			cur2.BackgroundTransparency = 1
 			cur2.Parent = sv
 			local cs = Instance.new("UIStroke")
-			cs.Thickness, cs.Color = 1, WHITE
+			cs.Thickness, cs.Color = 1, TEXTPC
 			cs.Parent = cur2
 			local hue = Instance.new("TextButton")
 			hue.Size = UDim2.new(1, -16, 0, 16)
@@ -382,7 +404,7 @@ local function controls(host: Instance, ctx: any): any
 			hueG.Parent = hue
 			local hueC = Instance.new("Frame")
 			hueC.Size = UDim2.new(0, 4, 1, 0)
-			hueC.BackgroundColor3, hueC.BorderSizePixel = WHITE, 0
+			hueC.BackgroundColor3, hueC.BorderSizePixel = TEXTPC, 0
 			hueC.Parent = hue
 			local function paint()
 				sv.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
@@ -440,8 +462,8 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	gui.Parent = root
 
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromOffset(560, 360)
-	frame.Position = UDim2.new(0.5, -280, 0.5, -180)
+	frame.Size = UDim2.fromOffset(620, 360)
+	frame.Position = UDim2.new(0.5, -310, 0.5, -180)
 	frame.BackgroundColor3 = BODY
 	frame.Active, frame.Draggable = true, true
 	frame.Parent = gui
@@ -462,9 +484,28 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		track(workspace.CurrentCamera)
 		fit()
 	end)
-	local ctx: any = { frame = frame, zoom = zoom }
-	local outer = Instance.new("UIStroke") -- ponytail: 2 strokes = inner+outer, merge if engine drops one
-	outer.Thickness, outer.Color = 2, WHITE
+	local ctx: any = { frame = frame, zoom = zoom, binds = binds, refresh = nil }
+	local kb: any = nil
+	ctx.refresh = function()
+		if not kb or not kb.Parent then return end
+		for c in kb:GetChildren() do if c:IsA("TextLabel") then c:Destroy() end end
+		local y = 0
+		for _, e in binds do
+			if e.key ~= "" then
+				local l = Instance.new("TextLabel")
+				l.Size = UDim2.new(1, 0, 0, ROW)
+				l.BackgroundTransparency = 1
+				l.Font, l.TextSize, l.TextColor3 = FONT, TS, TEXTPC
+				l.TextXAlignment = Enum.TextXAlignment.Left
+				l.Text = `{e.name}: [{e.key}] {e.mode}`
+				l.Position = UDim2.new(0, 0, 0, y)
+				l.Parent = kb
+				y += ROW
+			end
+		end
+	end
+	local outer = Instance.new("UIStroke") -- ponytail: black outline outer, purple accent inner
+	outer.Thickness, outer.Color = 2, OUTLINE
 	outer.Parent = frame
 	local inner = Instance.new("UIStroke")
 	inner.Thickness, inner.Color, inner.ApplyStrokeMode = 2, Color3.fromRGB(120, 120, 120), Enum.ApplyStrokeMode.Border
@@ -478,16 +519,16 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	local logo = Instance.new("TextLabel")
 	logo.Size = UDim2.new(1, 0, 0, 30)
 	logo.BackgroundTransparency = 1
-	logo.Font, logo.TextSize, logo.TextColor3, logo.Text = FONT, 15, WHITE, title
+	logo.Font, logo.TextSize, logo.TextColor3, logo.Text = FONT, 15, TEXTPC, title
 	logo.Parent = side
 	local sheen = Instance.new("UIGradient") -- ponytail: slow sweep, delete grad + thread if distracting
-	sheen.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, WHITE),
-		ColorSequenceKeypoint.new(0.35, WHITE),
-		ColorSequenceKeypoint.new(0.5, ACC),
-		ColorSequenceKeypoint.new(0.65, WHITE),
-		ColorSequenceKeypoint.new(1, WHITE),
-	})
+		sheen.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, TEXTPC),
+			ColorSequenceKeypoint.new(0.35, TEXTPC),
+			ColorSequenceKeypoint.new(0.5, ACC),
+			ColorSequenceKeypoint.new(0.65, TEXTPC),
+			ColorSequenceKeypoint.new(1, TEXTPC),
+		})
 	sheen.Parent = logo
 	task.spawn(function()
 		local o, d = -1, 0.05
@@ -534,9 +575,51 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		end
 	end)
 
+	-- keybind list panel (floating, draggable)
+	local kbGui = Instance.new("ScreenGui")
+	kbGui.Name = title .. "_kb"
+	kbGui.ResetOnSpawn = false
+	kbGui.DisplayOrder = 1000
+	kbGui.Parent = root
+	kb = Instance.new("TextButton")
+	kb.Size = UDim2.fromOffset(200, 24)
+	kb.Position = UDim2.new(1, -210, 1, -30)
+	kb.BackgroundColor3, kb.BorderSizePixel = SIDEBG, 0
+	kb.Font, kb.TextSize, kb.Text, kb.AutoButtonColor = FONT, TS, "Binds", false
+	kb.TextColor3 = TEXTPC
+	kb.Parent = kbGui
+	local kbStroke = Instance.new("UIStroke")
+	kbStroke.Thickness, kbStroke.Color = 1, OUTLINE
+	kbStroke.Parent = kb
+	local kbInner = Instance.new("Frame")
+	kbInner.Size = UDim2.new(1, 0, 0, 0)
+	kbInner.AutomaticSize = Enum.AutomaticSize.Y
+	kbInner.BackgroundTransparency = 1
+	kbInner.Parent = kb
+	UIS.InputBegan:Connect(function(i: InputObject)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 then kbDrag(i) end
+	end)
+	local kbDragging = false
+	local kbStart = Vector2.new()
+	local kbPos = Vector2.new()
+	function kbDrag(i: InputObject)
+		kbDragging = true
+		kbStart = i.Position
+		kbPos = kb.Position
+	end
+	UIS.InputEnded:Connect(function(i: InputObject)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 then kbDragging = false end
+	end)
+	UIS.InputChanged:Connect(function(i: InputObject)
+		if kbDragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+			kb.Position = Vector2.new(kbPos.X + (i.Position.X - kbStart.X), kbPos.Y + (i.Position.Y - kbStart.Y))
+		end
+	end)
+
 	local self: any = {}
 	local pages: { ScrollingFrame } = {}
 	local navs: { TextButton } = {}
+	local binds: { {name: string, key: string?, mode: string} } = {}
 	local function select(idx: number)
 		if ctx.close then ctx.close() end
 		for i, p in pages do
@@ -544,7 +627,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 			p.Visible = on
 			local nf: any = navs[i]:FindFirstChildOfClass("Frame")
 			if nf then nf.Visible = on end
-			navs[i].TextColor3 = if on then WHITE else GREY
+			navs[i].TextColor3 = if on then TEXTPC else TEXTDIM
 		end
 	end
 	function self:Tab(name: string)
@@ -585,14 +668,14 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		nb.Size = UDim2.new(1, 0, 0, ROW)
 		nb.BackgroundTransparency = 1
 		nb.Font, nb.TextSize, nb.Text = FONT, TS, name
-		nb.TextColor3, nb.TextXAlignment, nb.AutoButtonColor = GREY, Enum.TextXAlignment.Left, false
+		nb.TextColor3, nb.TextXAlignment, nb.AutoButtonColor = TEXTDIM, Enum.TextXAlignment.Left, false
 		nb.Parent = nav
 		local edge = Instance.new("Frame") -- ponytail: left-edge mark, swap for bg block if noisy
 		edge.Size = UDim2.new(0, 2, 1, 0)
 		edge.BackgroundColor3, edge.BorderSizePixel, edge.Visible = ACC, 0, #pages == 1
 		edge.Parent = nb
 		table.insert(navs, nb)
-		if #pages == 1 then navs[1].TextColor3 = WHITE end
+		if #pages == 1 then navs[1].TextColor3 = TEXTPC end
 		local idx = #pages
 		nb.MouseButton1Click:Connect(function() select(idx) end)
 
@@ -612,7 +695,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 			local head = Instance.new("TextButton")
 			head.Size = UDim2.new(1, 0, 0, ROW)
 			head.BackgroundTransparency = 1
-			head.Font, head.TextSize, head.TextColor3 = FONT, TS, WHITE
+			head.Font, head.TextSize, head.TextColor3 = FONT, TS, TEXTPC
 			head.TextXAlignment, head.AutoButtonColor = Enum.TextXAlignment.Left, false
 			head.Text = "  " .. t
 			head.Parent = wrap
