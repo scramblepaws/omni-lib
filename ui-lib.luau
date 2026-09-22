@@ -46,14 +46,32 @@ local function controls(host: Instance, ctx: any): any
 			ctx.pop:Destroy()
 			ctx.pop = nil
 		end
+		if ctx.veil then
+			ctx.veil:Destroy()
+			ctx.veil = nil
+		end
 	end
+	ctx.close = closePop
 	local function popFrame(w: number, h: number, rowBtn: TextButton): Frame
 		closePop()
+		local veil = Instance.new("TextButton")
+		veil.Size = UDim2.new(1, 0, 1, 0)
+		veil.BackgroundTransparency = 1
+		veil.Text = ""
+		veil.AutoButtonColor = false
+		veil.Parent = ctx.frame
+		veil.MouseButton1Click:Connect(closePop)
+		veil.MouseButton2Click:Connect(closePop)
+		ctx.veil = veil
 		local pop = Instance.new("Frame")
 		pop.Size = UDim2.fromOffset(w, h)
 		local fp, rp = ctx.frame.AbsolutePosition, rowBtn.AbsolutePosition
 		local s = ctx.zoom.Scale
-		pop.Position = UDim2.fromOffset((rp.X - fp.X) / s, (rp.Y - fp.Y) / s + ROW)
+		local y = (rp.Y - fp.Y) / s + ROW
+		if y + h > ctx.frame.AbsoluteSize.Y / s then
+			y = (rp.Y - fp.Y) / s - h
+		end
+		pop.Position = UDim2.fromOffset((rp.X - fp.X) / s, y)
 		pop.BackgroundColor3, pop.BorderSizePixel = SECT, 0
 		pop.Parent = ctx.frame
 		local st = Instance.new("UIStroke")
@@ -62,16 +80,18 @@ local function controls(host: Instance, ctx: any): any
 		ctx.pop = pop
 		return pop
 	end
-	local function row(): TextButton
-		local b = Instance.new("TextButton")
-		b.Size = UDim2.new(1, 0, 0, ROW)
-		b.BackgroundColor3, b.Font, b.TextSize = ROWC, FONT, TS
-		b.TextColor3, b.TextXAlignment, b.AutoButtonColor = WHITE, Enum.TextXAlignment.Left, false
-		b.Text = ""
-		b.Parent = host
-		pad(b, 6)
-		return b
-	end
+		local function row(): TextButton
+			local b = Instance.new("TextButton")
+			b.Size = UDim2.new(1, 0, 0, ROW)
+			b.BackgroundColor3, b.Font, b.TextSize = ROWC, FONT, TS
+			b.TextColor3, b.TextXAlignment, b.AutoButtonColor = WHITE, Enum.TextXAlignment.Left, false
+			b.Text = ""
+			b.Parent = host
+			pad(b, 6)
+			b.MouseEnter:Connect(function() b.BackgroundColor3 = Color3.fromRGB(48, 48, 48) end)
+			b.MouseLeave:Connect(function() b.BackgroundColor3 = ROWC end)
+			return b
+		end
 	local function label(b: TextButton, t: string)
 		local l = Instance.new("TextLabel")
 		l.Size = UDim2.new(1, -28, 1, 0)
@@ -98,7 +118,8 @@ local function controls(host: Instance, ctx: any): any
 		local bound: Enum.KeyCode? = nil
 		local mode, wait = "toggle", false
 		local b = row()
-		label(b, t)
+		local tl = label(b, t)
+		tl.Size = UDim2.new(1, -84, 1, 0) -- ponytail: clears the bind tag zone
 		local bl = Instance.new("TextLabel") -- ponytail: bind tag, delete block if binds unwanted
 		bl.Size = UDim2.new(0, 52, 1, 0)
 		bl.AnchorPoint = Vector2.new(1, 0)
@@ -185,26 +206,35 @@ local function controls(host: Instance, ctx: any): any
 		lab.BackgroundTransparency = 1
 		lab.Font, lab.TextSize, lab.TextColor3 = FONT, TS, WHITE
 		lab.TextXAlignment = Enum.TextXAlignment.Left
-		lab.TextTruncate = Enum.TextTruncate.AtEnd
-		lab.Parent = b
+			lab.TextTruncate = Enum.TextTruncate.AtEnd
+			lab.Parent = b
+			local stroke = Instance.new("UIStroke") -- ponytail: keeps white text readable over fill
+			stroke.Thickness, stroke.Color, stroke.Transparency = 1, BLACK, 0.4
+			stroke.Parent = lab
 		local function paint()
 			v = math.floor(math.clamp(v, min, max) * 10 + 0.5) / 10
 			fill.Size = UDim2.new(if max == min then 0 else (v - min) / (max - min), 0, 1, 0)
 			lab.Text = `{t} [{string.format("%.1f", v)}]`
 		end
 		paint()
-		b.InputBegan:Connect(function(i: InputObject)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 then hold = true end
-		end)
+			local function setAt(px: number)
+				v = min + (max - min) * math.clamp((px - b.AbsolutePosition.X) / b.AbsoluteSize.X, 0, 1)
+				paint()
+				pcall(cb, v)
+			end
+			b.InputBegan:Connect(function(i: InputObject)
+				if i.UserInputType == Enum.UserInputType.MouseButton1 then
+					hold = true
+					setAt(i.Position.X)
+				end
+			end)
 		UIS.InputEnded:Connect(function(i: InputObject)
 			if i.UserInputType == Enum.UserInputType.MouseButton1 then hold = false end
 		end)
-		UIS.InputChanged:Connect(function(i: InputObject)
-			if not hold or i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-			v = min + (max - min) * math.clamp((i.Position.X - b.AbsolutePosition.X) / b.AbsoluteSize.X, 0, 1)
-			paint()
-			pcall(cb, v)
-		end)
+			UIS.InputChanged:Connect(function(i: InputObject)
+				if not hold or i.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+				setAt(i.Position.X)
+			end)
 		pcall(cb, v)
 		return b
 	end
@@ -250,6 +280,7 @@ local function controls(host: Instance, ctx: any): any
 		end
 		preview()
 		b.MouseButton1Click:Connect(function()
+			if #options == 0 then return end
 			if ctx.pop and ctx.pop:GetAttribute("owner") == b then
 				closePop()
 				return
@@ -459,12 +490,12 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	})
 	sheen.Parent = logo
 	task.spawn(function()
+		local o, d = -1, 0.05
 		while gui.Parent do
-			for o = -1, 1, 0.05 do
-				if not gui.Parent then break end
-				sheen.Offset = Vector2.new(o, 0)
-				task.wait(0.05)
-			end
+			sheen.Offset = Vector2.new(o, 0)
+			o = o + d
+			if o > 1 or o < -1 then d = -d end
+			task.wait(0.05)
 		end
 	end)
 	local rule = Instance.new("Frame")
@@ -514,10 +545,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 	local tabs: { TextButton } = {}
 	local navs: { TextButton } = {}
 	local function select(idx: number)
-		if ctx.pop then
-			ctx.pop:Destroy()
-			ctx.pop = nil
-		end
+		if ctx.close then ctx.close() end
 		for i, p in pages do
 			local on = i == idx
 			p.Visible = on
@@ -525,8 +553,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 			if tf then tf.Visible = on end
 			local nf: any = navs[i]:FindFirstChildOfClass("Frame")
 			if nf then nf.Visible = on end
-			local nl: any = navs[i]:FindFirstChildOfClass("TextLabel")
-			if nl then nl.TextColor3 = if on then WHITE else GREY end
+			navs[i].TextColor3 = if on then WHITE else GREY
 		end
 	end
 	function self:Tab(name: string)
@@ -586,10 +613,7 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		edge.BackgroundColor3, edge.BorderSizePixel, edge.Visible = ACC, 0, #pages == 1
 		edge.Parent = nb
 		table.insert(navs, nb)
-		if #pages == 1 then
-			local first: any = navs[1]:FindFirstChildOfClass("TextLabel")
-			if first then first.TextColor3 = WHITE end
-		end
+		if #pages == 1 then navs[1].TextColor3 = WHITE end
 		local idx = #pages
 		tb.MouseButton1Click:Connect(function() select(idx) end)
 		nb.MouseButton1Click:Connect(function() select(idx) end)
