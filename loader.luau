@@ -19,4 +19,4 @@ if not okDemo then
 	local misc: any = win:Tab("Misc")
 	misc:AddButton("Ping", function() print("pong") end)
 end
-print("[loader] ok")
+print("[loader] v5 ok")
