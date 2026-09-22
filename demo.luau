@@ -15,6 +15,8 @@ local gen: any = move:Section("General", true, function(v: boolean) cfg.Hop = v 
 gen:AddToggle("Hop", cfg.Hop, function(v: boolean) cfg.Hop = v end)
 gen:AddSlider("Speed", 16, 100, cfg.Speed, function(v: number) cfg.Speed = v end)
 gen:AddKeybind("Use", cfg.Key, function(k: Enum.KeyCode) cfg.Key = k end)
+local set: any = move:Section("Settings", true, function() end, "right")
+set:AddButton("Ping", function() print("pong") end)
 local misc: any = win:Tab("Misc")
 local gen2: any = misc:Section("General", true, function() end)
 gen2:AddButton("Ping", function() print("pong") end)

@@ -257,11 +257,28 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		pg.CanvasSize = UDim2.new(0, 0, 0, 0)
 		pg.Visible = #pages == 0
 		pg.Parent = body
-		list(pg, false)
 		local qp = Instance.new("UIPadding")
 		qp.PaddingLeft, qp.PaddingRight = UDim.new(0, 4), UDim.new(0, 4)
 		qp.Parent = pg
 		table.insert(pages, pg)
+
+		-- ponytail: conjoined scroll, canvas follows tallest column; split scroll if columns desync
+		local cols = Instance.new("Frame")
+		cols.Size = UDim2.new(1, 0, 0, 0)
+		cols.AutomaticSize = Enum.AutomaticSize.Y
+		cols.BackgroundTransparency = 1
+		cols.Parent = pg
+		list(cols, true)
+		local function column(scale: number): Frame
+			local c = Instance.new("Frame")
+			c.Size = UDim2.new(scale, -2, 0, 0)
+			c.AutomaticSize = Enum.AutomaticSize.Y
+			c.BackgroundTransparency = 1
+			c.Parent = cols
+			list(c, false)
+			return c
+		end
+		local left, right = column(0.6), column(0.4)
 
 		local tb = Instance.new("TextButton")
 		tb.Size = UDim2.new(0, 96, 1, 0)
@@ -294,14 +311,15 @@ function Menu.Window(title: string, toggleKey: Enum.KeyCode?)
 		tb.MouseButton1Click:Connect(function() select(idx) end)
 		nb.MouseButton1Click:Connect(function() select(idx) end)
 
-		local ctl: any = controls(pg)
-		function ctl:Section(t: string, default: boolean, cb: (boolean) -> ())
+		local ctl: any = controls(left)
+		function ctl:Section(t: string, default: boolean, cb: (boolean) -> (), col: string?)
+			local host = if col == "right" then right else left
 			local on = default
 			local wrap = Instance.new("Frame")
 			wrap.Size = UDim2.new(1, 0, 0, 0)
 			wrap.AutomaticSize = Enum.AutomaticSize.Y
 			wrap.BackgroundColor3, wrap.BorderSizePixel = SECT, 0
-			wrap.Parent = pg
+			wrap.Parent = host
 			list(wrap, false)
 			local qp2 = Instance.new("UIPadding")
 			qp2.PaddingTop, qp2.PaddingBottom = UDim.new(0, 4), UDim.new(0, 4)
